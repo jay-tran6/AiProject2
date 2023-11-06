@@ -1,0 +1,99 @@
+import random 
+import math
+import numpy as np
+
+
+num_activity = 10
+num_room = 7
+num_slot = 6
+num_facilitator = 10
+
+facilits = ["Lock", "Glen", "Banks", "Richards", 
+"Shaw", "Singer", "Uther", "Tyler", "Numen", "Zeldin"]
+
+prefer_facilits = {
+    "SLA100A": ["Glen", "Lock", "Banks", "Zeldin"],
+    "SLA100B": ["Glen", "Lock", "Banks", "Zeldin"],
+    "SLA191A": ["Glen", "Lock", "Banks", "Zeldin"],
+    "SLA191B": ["Glen", "Lock", "Banks", "Zeldin"],
+    "SLA201": ["Glen", "Banks", "Zeldin", "Shaw"],
+    "SLA291": ["Lock", "Banks", "Zeldin", "Singer"],
+    "SLA303": ["Glen", "Zeldin", "Banks"],
+    "SLA304": ["Glen", "Banks", "Tyler"],
+    "SLA394": ["Tyler", "Singer"],
+    "SLA449": ["Tyler", "Singer", "Shaw"],
+    "SLA451": ["Tyler", "Singer", "Shaw"]
+}
+
+room_space = {
+    "Slater 003": 45,
+    "Roman 216": 30,
+    "Loft 206": 75,
+    "Roman 201": 50,
+    "Loft 310": 108,
+    "Beach 201": 60,
+    "Beach 301": 75,
+    "Logos 325": 450,
+    "Frank 119": 60  
+}
+
+
+def initial_schedule():
+    return [[random.randint(0, num_room - 1),
+             random.randint(0, num_slot - 1),
+             random.randint(0, num_facilits - 1)] for _ in range(num_activity)]
+
+def calc_fitness(initial_schedule):
+    fitness = 0
+    room_size = [0] *num_room
+    work = [0] * num_facilits #workload for the facilitators
+
+    for i in range(num_activity):
+        room, time, facilitator = schedule[i]
+        name_activity = f"SLA{i+1}"
+        expect_enroll = 50  # Default expected enrollment size for activities
+        if name_activirty in ["SLA303", "SLA304"]:
+            expect_enroll = 60
+        elif name_activity == "SLA451":
+            expect_enroll = 100
+        
+
+        activity_size = expect_enroll
+        room_capacity = room_space[list(room_space.keys())[room]]
+        room_sizes[room] += activity_size
+        
+        if activity_size > room_capacity:
+            fitness -= 0.5
+        elif activity_size < room_capacity / 3:
+            fitness -= 0.2
+        elif activity_size > room_capacity * 3:
+            fitness -= 0.4
+        else:
+            fitness += 0.3
+        
+        #facilitator constraints
+        facilitator_name = facilits[facilitator]
+        if facilitator_name in prefer_facilits[activity_name]:
+            fitness += 0.5
+        elif facilitator_name in prefer_facilits.values():
+            fitness += 0.2
+        else:
+            fitness -= 0.1
+        
+        work[facilitator] += 1
+        
+        #facilitator workload constraints
+        if work[facilitator] == 1:
+            fitness += 0.2
+        elif work[facilitator] > 1:
+            fitness -= 0.2
+        if facilitator_name == "Tyler" and work[facilitator] > 2:
+            fitness -= 0.5
+    
+    return fitness
+
+
+def genetic_algo(num_generated, pop_size, mutate_rate):
+    population = [initial_schedule() for i in range(pop_size)]
+
+print("hello")
