@@ -1,0 +1,102 @@
+#sample 
+
+import random
+import math
+
+NUM_ACTIVITIES = 10
+NUM_TIMESLOTS = 6
+NUM_ROOMS = 7
+NUM_FACILITATORS = 10
+
+# Initialize schedule
+def initialize_schedule():
+    return [[random.randint(0, NUM_ROOMS - 1),
+             random.randint(0, NUM_TIMESLOTS - 1),
+             random.randint(0, NUM_FACILITATORS - 1)] for _ in range(NUM_ACTIVITIES)]
+
+# Calculate fitness score for a schedule
+def calculate_fitness(schedule):
+    # Implement the fitness calculation based on the provided constraints
+    # ...
+    # Return the fitness score
+    return fitness_score
+
+# Selection
+def selection(population, scores):
+    # Use roulette wheel selection method based on softmax normalization
+    probabilities = softmax(scores)
+    selected_indices = random.choices(range(len(population)), probabilities, k=2)
+    return [population[i] for i in selected_indices]
+
+# Crossover
+def crossover(parent1, parent2):
+    # Apply single-point crossover to create two offspring
+    point = random.randint(1, NUM_ACTIVITIES - 1)
+    child1 = parent1[:point] + parent2[point:]
+    child2 = parent2[:point] + parent1[point:]
+    return child1, child2
+
+# Mutation
+def mutate(schedule, mutation_rate):
+    # Apply mutation with the given mutation rate
+    mutated_schedule = schedule[:]
+    for i in range(NUM_ACTIVITIES):
+        if random.random() < mutation_rate:
+            mutated_schedule[i] = [random.randint(0, NUM_ROOMS - 1),
+                                    random.randint(0, NUM_TIMESLOTS - 1),
+                                    random.randint(0, NUM_FACILITATORS - 1)]
+    return mutated_schedule
+
+# Softmax normalization for selection
+def softmax(scores):
+    exp_scores = [math.exp(score) for score in scores]
+    sum_exp_scores = sum(exp_scores)
+    return [exp_score / sum_exp_scores for exp_score in exp_scores]
+
+# Genetic Algorithm
+def genetic_algorithm(num_generations, population_size, mutation_rate):
+    population = [initialize_schedule() for _ in range(population_size)]
+    best_schedule = None
+    best_fitness = float('-inf')
+    
+    for generation in range(num_generations):
+        # Calculate fitness scores for the current population
+        scores = [calculate_fitness(schedule) for schedule in population]
+        
+        # Select parents based on fitness scores
+        parent1, parent2 = selection(population, scores)
+        
+        # Apply crossover to create offspring
+        child1, child2 = crossover(parent1, parent2)
+        
+        # Apply mutation to the offspring
+        child1 = mutate(child1, mutation_rate)
+        child2 = mutate(child2, mutation_rate)
+        
+        # Replace the worst individuals in the population with the offspring
+        worst_index1 = scores.index(max(scores))
+        worst_index2 = scores.index(max(scores[:worst_index1] + scores[worst_index1+1:]))
+        population[worst_index1] = child1
+        population[worst_index2] = child2
+        
+        # Update the best schedule and best fitness score
+        current_best_index = scores.index(min(scores))
+        if scores[current_best_index] > best_fitness:
+            best_schedule = population[current_best_index]
+            best_fitness = scores[current_best_index]
+    
+    return best_schedule, best_fitness
+
+# Main function
+def main():
+    num_generations = 1000
+    population_size = 100
+    mutation_rate = 0.01
+
+    best_schedule, best_fitness = genetic_algorithm(num_generations, population_size, mutation_rate)
+    print("Best Schedule:")
+    print(best_schedule)
+    print("Best Fitness:", best_fitness)
+
+if __name__ == "__main__":
+    main()
