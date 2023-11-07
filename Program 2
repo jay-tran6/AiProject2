@@ -6,10 +6,10 @@ import numpy as np
 num_activity = 10
 num_room = 7
 num_slot = 6
-num_facilitator = 10
+num_facilits = 10
 
-facilits = ["Lock", "Glen", "Banks", "Richards", 
-"Shaw", "Singer", "Uther", "Tyler", "Numen", "Zeldin"]
+facilits = { 0:"Lock", 1:"Glen", 2:"Banks", 3:"Richards", 
+4:"Shaw", 5:"Singer", 6:"Uther", 7:"Tyler", 8:"Numen", 9:"Zeldin"}
 
 prefer_facilits = {
     "SLA100A": ["Glen", "Lock", "Banks", "Zeldin"],
@@ -43,24 +43,25 @@ def initial_schedule():
              random.randint(0, num_slot - 1),
              random.randint(0, num_facilits - 1)] for _ in range(num_activity)]
 
+
 def calc_fitness(initial_schedule):
     fitness = 0
     room_size = [0] *num_room
     work = [0] * num_facilits #workload for the facilitators
 
     for i in range(num_activity):
-        room, time, facilitator = schedule[i]
+        room, time, facilitator = initial_schedule[i]
         name_activity = f"SLA{i+1}"
         expect_enroll = 50  # Default expected enrollment size for activities
-        if name_activirty in ["SLA303", "SLA304"]:
+
+        if name_activity in ["SLA303", "SLA304"]:
             expect_enroll = 60
         elif name_activity == "SLA451":
             expect_enroll = 100
         
-
         activity_size = expect_enroll
         room_capacity = room_space[list(room_space.keys())[room]]
-        room_sizes[room] += activity_size
+        room_size[room] += activity_size
         
         if activity_size > room_capacity:
             fitness -= 0.5
@@ -73,7 +74,7 @@ def calc_fitness(initial_schedule):
         
         #facilitator constraints
         facilitator_name = facilits[facilitator]
-        if facilitator_name in prefer_facilits[activity_name]:
+        if facilitator_name in prefer_facilits.get(name_activity, []):
             fitness += 0.5
         elif facilitator_name in prefer_facilits.values():
             fitness += 0.2
@@ -87,13 +88,100 @@ def calc_fitness(initial_schedule):
             fitness += 0.2
         elif work[facilitator] > 1:
             fitness -= 0.2
-        if facilitator_name == "Tyler" and work[facilitator] > 2:
-            fitness -= 0.5
-    
+
+        #activity-specific adjustments
+        if name_activity in ["SLA101A", "SLA101B"]:
+            if initial_schedule[9 - i][1] - time > 4:
+                fitness += 0.5
+            if initial_schedule[9 - i][1] == time:
+                fitness -= 0.5
+
+        elif name_activity in ["SLA191A", "SLA191B"]:
+            if initial_schedule[19 - i][1] - time > 4:  # Compare with the other section's time
+                fitness += 0.5
+            if initial_schedule[19 - i][1] == time:
+                fitness -= 0.5
+        
+        elif name_activity in ["SLA191A", "SLA101A"]:
+            if abs(initial_schedule[19 - i][1] - time) == 1:  # Separated by 1 hour
+                fitness += 0.25
+            if initial_schedule[19 - i][1] == time:  # Taught in the same time slot
+                fitness -= 0.25       
+   
     return fitness
+
+
+def softmax(scores):
+    exp_scores = [math.exp(score) for score in scores]
+    sum_exp_scores = sum(exp_scores)
+    return [exp_score / sum_exp_scores for exp_score in exp_scores]
+    
+
+def select(population, scores):
+    probrability = softmax(scores)
+    select_indice = random.choices(range(len(population)), probrability, k=2)
+    return [population[i] for i in select_indice]
+
+
+def crossover(p1, p2):
+    point = random.randint(1,num_activity - 1)
+    c1 = p1[:point] + p2[point:]
+    c2 = p2[:point] + p1[point:]
+    return c1, c2
+
+
+def mutate(initial_schedule, mutate_rate):
+    """mutate_schedule = []
+    for activity in initial_schedule:
+        if random.random() < mutate_rate:
+            mutate_activity = [
+                random.randint(0, num_room - 1),
+                random.randint(0, num_slot -1),
+                random.randint(0, num_facilits -1)]
+        else:
+            mutate_activity = num_activity[:]
+        mutate_schedule.append(mutate_activity)
+    return mutate_schedule"""
 
 
 def genetic_algo(num_generated, pop_size, mutate_rate):
     population = [initial_schedule() for i in range(pop_size)]
+    best_schedule = None
+    best_fitness = None
+    prev_avg_fitness = 0
 
-print("hello")
+    for generation in range(num_generated):
+        scores = [calc_fitness(initial_schedule) for initial_schedule in population]
+
+        if generation >= 100 and np.mean(scores) - prev_avg_fitness < 0.01:
+            break
+
+        pop_new = population[0] #new population
+        for i in range(pop_size // 2):
+            p1, p2 = select(population, scores)
+            c1, c2 = crossover(p1, p2)
+            pop_new.extend([c1, c2])
+
+        mutate_pop = [mutate(initial_schedule, mutate_rate) for schedule in pop_new]
+        pop = mutate_pop
+        prev_avg_fitness - np.mean(scores)
+
+        best_index = np.argmax(scores)
+        best_schedule = pop[best_index]
+        best_fitness = scores[best_index]
+
+    return best_schedule, best_fitness
+
+
+def main():
+    num_generations = 100
+    pop_size = 500
+    mutate_rate = 0.01
+
+    best_schedule, best_fitness = genetic_algo(num_generations, pop_size, mutate_rate)
+    print("obtaining best schedule: ", best_schedule)
+    print("obtaining best fitness: ", best_fitness)
+
+
+if __name__ == "__main__":
+    main()
